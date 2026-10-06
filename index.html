@@ -1,0 +1,146 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Civil JE CBT Exam Simulator</title>
+<style>
+:root{--bg:#f4f6f8;--ink:#17212b;--card:#fff;--line:#d5dde4;--pri:#0a6c74;--amb:#b7791f;--ok:#1e7f4f;--bad:#b83232;--mut:#5d6b78}
+[data-theme=dark]{--bg:#10161c;--ink:#e6edf3;--card:#18212a;--line:#2b3844;--pri:#2a8f99;--mut:#9aa8b5}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.5 system-ui,-apple-system,Segoe UI,Roboto,sans-serif}
+.top,.bar{display:flex;gap:10px;align-items:center;justify-content:space-between;padding:10px 14px;background:var(--pri);color:#fff;position:sticky;top:0;z-index:5;flex-wrap:wrap}
+.top h1{font-size:1.05rem;margin:0}.top button{background:none;border:1px solid #fff8;color:#fff;border-radius:8px;min-height:40px;padding:0 12px;font:inherit}
+#app{max-width:1100px;margin:0 auto;padding:14px}h2,h3{margin:.2em 0 .5em}
+.card{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:14px;margin-bottom:14px}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px}
+.stat{border:1px solid var(--line);border-radius:8px;padding:10px}.stat b{display:block;font-size:1.4rem}.stat small,.meta{color:var(--mut)}
+.btn{min-height:44px;padding:0 14px;border:1px solid var(--line);border-radius:8px;background:var(--card);color:var(--ink);font:inherit;cursor:pointer;margin:3px 3px 3px 0}
+.pri{background:var(--pri);color:#fff;border-color:var(--pri)}.danger{color:var(--bad)}.btn.on{outline:3px solid var(--pri)}
+.tiles{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:10px}.tiles .btn{min-height:64px;text-align:left;font-weight:600}
+.form{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:10px}.form label{display:flex;flex-direction:column;font-size:.9rem}
+select,input{min-height:44px;font:inherit;padding:0 8px;background:var(--card);color:var(--ink);border:1px solid var(--line);border-radius:8px}
+.tm{font:700 1.25rem ui-monospace,monospace;padding:2px 10px;border-radius:6px;background:#fff3}.tm.warn{background:var(--amb)}.tm.crit{background:var(--bad)}
+.ex{display:grid;grid-template-columns:1fr 280px;gap:14px}
+.opt{display:flex;gap:10px;border:1px solid var(--line);border-radius:8px;padding:12px;margin:8px 0;cursor:pointer}.opt.on{border-color:var(--pri);background:#0a6c7424}
+.pal{display:grid;grid-template-columns:repeat(5,1fr);gap:8px;margin:10px 0}
+.p{min-height:44px;border-radius:8px;border:1px solid var(--line);font:inherit;cursor:pointer;background:#e3e8ec;color:#17212b}
+.p.na{background:#f3c9c9}.p.a{background:#bfe5cf}.p.r{background:#e3d2f5}.p.ar{background:#bfe5cf;box-shadow:inset 0 0 0 3px #8a5cc2}.p.cur{outline:3px solid var(--pri)}
+summary{font-weight:700;min-height:36px;cursor:pointer}.legend{font-size:.8rem;color:var(--mut)}
+.bar2{height:10px;background:var(--line);border-radius:5px;overflow:hidden}.bar2 i{display:block;height:100%;background:var(--pri)}
+.row{display:grid;grid-template-columns:170px 1fr 48px;gap:8px;align-items:center;margin:6px 0}
+.C{border-left:4px solid var(--ok)}.W{border-left:4px solid var(--bad)}.U{border-left:4px solid var(--amb)}.rv{padding-left:12px;margin:12px 0}
+.err{border-color:var(--bad)}pre{white-space:pre-wrap;word-break:break-word;font-size:.8rem}
+@media(max-width:800px){.ex{grid-template-columns:1fr}.row{grid-template-columns:105px 1fr 44px}}
+</style></head><body>
+<div class="top"><h1>CIVIL JE CBT EXAM SIMULATOR</h1><span><button data-a="home">Home</button> <button data-a="theme">Light/Dark</button></span></div>
+<div id="app"><div class="card err"><h2>JavaScript failed to initialize</h2>
+<p>This page needs JavaScript. If you still see this message, your browser blocked the script or it hit an error before it could start (an error card with details will replace this message when possible).</p>
+<p><b>Exams:</b> RRB JE · SSC JE · HPCL JE &nbsp; <b>Branch:</b> Civil Engineering</p></div></div>
+<noscript><div class="card err" style="margin:14px"><h2>JavaScript is disabled</h2><p>Enable JavaScript to use the simulator.</p></div></noscript>
+<script>
+(function(){
+"use strict";
+/* ================= CONFIG – edit here =================
+   Exam values are UNVERIFIED PLACEHOLDERS. Check the latest official notification and change them. */
+var EXAM_CONFIG={
+ RRB_JE:{name:"RRB JE",correctMarks:1,negativeMarks:1/3,durationMinutes:120,totalQuestions:100},
+ SSC_JE:{name:"SSC JE",correctMarks:1,negativeMarks:1/3,durationMinutes:120,totalQuestions:100},
+ HPCL_JE:{name:"HPCL JE",correctMarks:1,negativeMarks:1/4,durationMinutes:120,totalQuestions:100}};
+var MASTERY_THRESHOLD=3;   // consecutive correct answers, in separate tests, after a mistake
+var WEAK_BELOW=50,STRONG_ABOVE=75,DUE_SHARE=0.4; // share of a test reserved for due mistakes
+var STORE_KEY="cbtSimulator_v1_progress";
+var SUBJECTS={Technical:["Engineering Mechanics","Strength of Materials","Theory of Structures","Structural Analysis","RCC","Steel Structures","Concrete Technology","Building Materials","Building Construction","Construction Management","Estimation & Costing","Surveying","Geotechnical Engineering","Soil Mechanics","Foundation Engineering","Fluid Mechanics","Hydraulics","Hydrology","Irrigation Engineering","Environmental Engineering","Public Health Engineering","Transportation Engineering","Highway Engineering","Railway Engineering","Bridge Engineering","Engineering Drawing","CAD Fundamentals","Engineering Mathematics"],
+ "Non-Technical":["General Awareness","Current Affairs","General Intelligence & Reasoning","Reasoning","General Science","Mathematics","English","Computer Awareness","Quantitative Aptitude"]};
+/* ================= QUESTION BANK – add q(...) lines or plain objects ================= */
+var ALL=["RRB_JE","SSC_JE","HPCL_JE"],T="Technical",N="Non-Technical";
+function q(id,sec,sub,top,diff,text,opts,ans,exp,f){return{id:id,exam:ALL,section:sec,subject:sub,topic:top,difficulty:diff,question:text,options:opts,correctAnswer:ans,explanation:exp,concept:top,formula:f||"",sourceType:"PYQ-style / Practice Question",year:null,tags:[sub,top]}}
+var QUESTIONS=[
+q("CE-SOM-0001",T,"Strength of Materials","Bending Stress","Easy","Section modulus of a rectangular section (b × d) about its centroidal axis is",["bd²/6","bd³/12","bd²/12","bd³/6"],0,"Z = I/y_max = (bd³/12)/(d/2) = bd²/6.","Z = bd²/6"),
+q("CE-SOM-0002",T,"Strength of Materials","Shear Stress","Medium","For a rectangular beam section, the maximum shear stress is ___ times the average shear stress",["1.0","1.5","2.0","1.33"],1,"τmax = 3V/(2bd) = 1.5 τavg, at the neutral axis.","τmax = 1.5 V/(bd)"),
+q("CE-SOM-0003",T,"Strength of Materials","Columns","Medium","Euler's crippling load for a column hinged at both ends is",["π²EI/L²","2π²EI/L²","π²EI/4L²","4π²EI/L²"],0,"Hinged-hinged effective length Le = L, so P = π²EI/L².","P = π²EI/Le²"),
+q("CE-SOM-0004",T,"Strength of Materials","Elastic Constants","Easy","Poisson's ratio of steel is approximately",["0.1","0.3","0.5","0.7"],1,"Structural steel has ν ≈ 0.25–0.33; 0.3 is the usual value."),
+q("CE-EM-0001",T,"Engineering Mechanics","Resultant of Forces","Medium","Two equal forces P act at an angle θ between them. Their resultant is",["2P cos(θ/2)","2P sin(θ/2)","P cos θ","P sin θ"],0,"R² = P² + P² + 2P² cos θ = 4P² cos²(θ/2), so R = 2P cos(θ/2).","R = 2P cos(θ/2)"),
+q("CE-FM-0001",T,"Fluid Mechanics","Fluid Properties","Easy","SI unit of dynamic viscosity is",["N/m²","m²/s","Pa·s","N·s/m³"],2,"μ = τ/(du/dy), giving N·s/m² = Pa·s.","τ = μ du/dy"),
+q("CE-FM-0002",T,"Fluid Mechanics","Fluid Kinematics","Medium","The continuity equation is based on conservation of",["Energy","Momentum","Mass","Angular momentum"],2,"Mass in minus mass out equals storage; for incompressible flow A1V1 = A2V2.","A1V1 = A2V2"),
+q("CE-HY-0001",T,"Hydraulics","Open Channel Flow","Medium","In an open channel, flow is critical when the Froude number equals",["0","0.5","1","2"],2,"Fr = V/√(gD); Fr = 1 is critical, below 1 subcritical, above 1 supercritical.","Fr = V/√(gD)"),
+q("CE-SUR-0001",T,"Surveying","Traversing","Medium","Sum of interior angles of a closed traverse with n sides is",["(2n−2)×90°","(2n−4)×90°","(2n+2)×90°","(n−2)×90°"],1,"A closed polygon has (2n − 4) right angles in total.","Σ = (2n−4)×90°"),
+q("CE-SUR-0002",T,"Surveying","Bearings","Easy","If the fore bearing of a line is 225°, its back bearing is",["45°","135°","315°","225°"],0,"Back bearing = fore bearing − 180° when the fore bearing exceeds 180°: 225° − 180° = 45°."),
+q("CE-GT-0001",T,"Geotechnical Engineering","Shear Strength","Medium","The shear strength of a dry cohesionless soil is given by",["c + σ tan φ","σ tan φ","c","σ cos φ"],1,"With c = 0 in Coulomb's equation τ = c + σ tan φ, strength is σ tan φ.","τ = σ tan φ"),
+q("CE-SM-0001",T,"Soil Mechanics","Soil Properties","Easy","Void ratio of soil is the ratio of",["Volume of voids to total volume","Volume of voids to volume of solids","Volume of water to volume of voids","Volume of solids to total volume"],1,"e = Vv/Vs. The first option is porosity (n = Vv/V).","e = Vv/Vs"),
+q("CE-CT-0001",T,"Concrete Technology","Testing","Easy","The standard cube used for concrete compressive strength test as per IS 456 is",["100 mm","150 mm","200 mm","300 mm"],1,"The standard specimen is a 150 mm cube, tested at 28 days."),
+q("CE-RCC-0001",T,"RCC","Design Basics","Medium","As per IS 456:2000, the minimum grade of concrete for reinforced concrete under mild exposure is",["M10","M15","M20","M25"],2,"M20 is the minimum for RCC in mild exposure; M15 is allowed only for plain concrete."),
+q("CE-BM-0001",T,"Building Materials","Lime","Easy","Lime that can set and harden under water is called",["Fat lime","Hydraulic lime","Quick lime","Slaked lime"],1,"Hydraulic lime contains clay impurities that let it set in the absence of air."),
+q("CE-CM-0001",T,"Construction Management","CPM","Medium","In CPM, the critical path is the",["Shortest path through the network","Longest path through the network","Path with maximum float","Path with the most activities"],1,"The critical path is the longest-duration path, with zero total float; it fixes the project duration."),
+q("CE-ENV-0001",T,"Environmental Engineering","Wastewater","Easy","The standard BOD test is conducted for",["3 days at 27°C","5 days at 20°C","7 days at 20°C","5 days at 27°C"],1,"Standard BOD5 is measured after 5 days of incubation at 20°C."),
+q("CE-TRN-0001",T,"Transportation Engineering","Highway Geometrics","Hard","With e = superelevation, f = side friction, V in km/h and R in m, the horizontal curve equation is",["e + f = V²/127R","e − f = V²/127R","e + f = V²/225R","e + f = V/127R"],0,"Equilibrium on a banked curve gives e + f = V²/(gR); with V in km/h, gR becomes 127R.","e + f = V²/127R"),
+q("GR-0001",N,"Reasoning","Series","Medium","Find the next number: 2, 6, 12, 20, 30, ?",["40","42","44","36"],1,"Differences are 4, 6, 8, 10, so the next is +12: 30 + 12 = 42."),
+q("GR-0002",N,"Reasoning","Coding","Medium","If CAT = 24 and DOG = 26 (sum of letter positions), then BAT = ?",["22","23","24","25"],1,"B + A + T = 2 + 1 + 20 = 23."),
+q("MT-0001",N,"Mathematics","Percentage","Easy","15% of 240 is",["32","34","36","38"],2,"15/100 × 240 = 36."),
+q("MT-0002",N,"Mathematics","Simple Interest","Easy","Simple interest on ₹1000 at 10% per annum for 2 years is",["₹100","₹200","₹210","₹220"],1,"SI = PRT/100 = 1000 × 10 × 2 / 100 = ₹200.","SI = PRT/100"),
+q("GS-0001",N,"General Science","Physics","Easy","SI unit of force is",["Joule","Newton","Pascal","Watt"],1,"Force = mass × acceleration, measured in newtons (kg·m/s²)."),
+q("EN-0001",N,"English","Synonyms","Easy","Choose the synonym of ABUNDANT",["Scarce","Plentiful","Tiny","Costly"],1,"Abundant means existing in large quantity, so plentiful."),
+q("CA-0001",N,"Computer Awareness","Basics","Easy","RAM stands for",["Read Access Memory","Random Access Memory","Rapid Access Machine","Run Access Memory"],1,"RAM is volatile Random Access Memory used for working data.")];
+/* ================= helpers ================= */
+var Q=[],byId={},warns=[],TM=null,BF={sec:"",sub:"",diff:""},app=document.getElementById("app");
+function esc(s){return String(s).replace(/[&<>"]/g,function(c){return{"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]})}
+function pct(a,b){return b?Math.round(a/b*100):0}
+function shuffle(a){a=a.slice();for(var i=a.length-1;i>0;i--){var j=Math.floor(Math.random()*(i+1)),t=a[i];a[i]=a[j];a[j]=t}return a}
+function bar(l,v){return '<div class="row"><span>'+esc(l)+'</span><div class="bar2"><i style="width:'+v+'%"></i></div><b>'+v+'%</b></div>'}
+function stat(a,b){return '<div class="stat"><small>'+a+'</small><b>'+b+'</b></div>'}
+function view(h){clearInterval(TM);app.innerHTML=h;if(window.scrollTo)window.scrollTo(0,0)}
+function fail(e){var m=(e&&e.stack)||String(e);app.innerHTML='<div class="card err"><h2>Application failed to initialize.</h2><p>Diagnostic information:</p><pre>'+esc(m)+'</pre><pre>Browser: '+esc(navigator.userAgent)+'\nPage: '+esc(location.href)+'\nStorage key: '+STORE_KEY+'</pre><p>You can try <button class="btn" data-a="wipe">resetting saved data</button> (this deletes progress).</p></div>'}
+/* ================= storage ================= */
+var P={v:1,att:{},hist:[],bm:[],active:null,theme:"light",exam:"RRB_JE"};
+try{var raw=localStorage.getItem(STORE_KEY);if(raw){var o=JSON.parse(raw);for(var k in o)P[k]=o[k]}}catch(e){warns.push("Saved data could not be read; starting fresh.")}
+function save(){try{localStorage.setItem(STORE_KEY,JSON.stringify(P))}catch(e){warns.push("Could not save progress (storage blocked or full).")}}
+/* ================= validation ================= */
+function validate(){var seen={};QUESTIONS.forEach(function(x){var e=[];
+ if(!x.id)e.push("missing id");else if(seen[x.id])e.push("duplicate id");else seen[x.id]=1;
+ if(!Array.isArray(x.options)||x.options.length!==4||x.options.some(function(o){return !o}))e.push("options must be 4 non-empty strings");
+ if(!(x.correctAnswer>=0&&x.correctAnswer<=3&&x.correctAnswer%1===0))e.push("invalid correctAnswer");
+ if(!Array.isArray(x.exam)||!x.exam.length||x.exam.some(function(c){return !EXAM_CONFIG[c]}))e.push("invalid exam");
+ if(!SUBJECTS[x.section])e.push("invalid section");else if(SUBJECTS[x.section].indexOf(x.subject)<0)e.push("invalid subject '"+x.subject+"'");
+ if(["Easy","Medium","Hard"].indexOf(x.difficulty)<0)e.push("invalid difficulty");if(!x.explanation)e.push("missing explanation");
+ if(!x.question)e.push("missing question");
+ if(e.length)warns.push("Skipped "+(x.id||"(no id)")+": "+e.join(", "));else{Q.push(x);byId[x.id]=x}})}
+/* ================= revision memory ================= */
+function rec(id){return P.att[id]}
+function isMis(id){var r=rec(id);return !!r&&r.wrongAttempts>0}
+function isMastered(id){var r=rec(id);return isMis(id)&&r.consecutiveCorrect>=MASTERY_THRESHOLD}
+function isDue(id){return isMis(id)&&!isMastered(id)}
+function calcPriority(r){if(r.wrongAttempts>0&&r.consecutiveCorrect>=MASTERY_THRESHOLD)return 5;
+ var d=(Date.now()-r.lastAttempt)/864e5,p=r.wrongAttempts*15+(100-r.mastery)*.4-r.consecutiveCorrect*20+Math.min(d,14)*2+(r.lastResult==="W"?20:0);return Math.max(1,Math.min(100,Math.round(p)))}
+function weight(x){var r=rec(x.id);if(!r)return 1+Math.random();return isDue(x.id)?r.revisionPriority+Math.random():.5+Math.random()*.1}
+function topicStats(){var t={};Object.keys(P.att).forEach(function(id){var x=byId[id];if(!x)return;var r=P.att[id],s=t[x.topic]||(t[x.topic]={a:0,c:0,subject:x.subject});s.a+=r.attempts;s.c+=r.correctAttempts});return t}
+function weakTopics(){var t=topicStats();return Object.keys(t).filter(function(k){return t[k].a>=2&&pct(t[k].c,t[k].a)<WEAK_BELOW})}
+function stats(){var a=0,c=0,ids=Object.keys(P.att).filter(function(i){return byId[i]});ids.forEach(function(i){a+=P.att[i].attempts;c+=P.att[i].correctAttempts});
+ return{solved:a,acc:pct(c,a),tests:P.hist.length,best:P.hist.length?Math.max.apply(null,P.hist.map(function(h){return pct(h.score,h.max)})):0,
+ mis:ids.filter(isMis).length,due:ids.filter(isDue).length,mas:ids.filter(isMastered).length,prog:ids.filter(function(i){return isDue(i)&&P.att[i].consecutiveCorrect>0}).length}}
+/* ================= test building ================= */
+function build(o){if(o.ids)return o.ids.map(function(i){return byId[i]}).filter(Boolean);
+ var p=Q.filter(function(x){return x.exam.indexOf(o.exam)>=0});
+ if(o.section)p=p.filter(function(x){return x.section===o.section});
+ if(o.subject)p=p.filter(function(x){return x.subject===o.subject});
+ if(o.topic)p=p.filter(function(x){return x.topic===o.topic});
+ if(o.diff&&o.diff!=="Mixed")p=p.filter(function(x){return x.difficulty===o.diff});
+ if(o.mode==="wrong")p=p.filter(function(x){return isMis(x.id)});
+ if(o.mode==="due")p=p.filter(function(x){return isDue(x.id)});
+ if(o.mode==="weak"){var w=weakTopics();p=p.filter(function(x){return w.indexOf(x.topic)>=0})}
+ var n=Math.min(o.count||10,p.length),s=p.map(function(x){return[weight(x),x]}).sort(function(a,b){return b[0]-a[0]}).map(function(z){return z[1]});
+ if(["wrong","due","weak"].indexOf(o.mode)>=0)return shuffle(s.slice(0,n));
+ var due=s.filter(function(x){return isDue(x.id)}).slice(0,Math.ceil(n*DUE_SHARE)),rest=shuffle(s.filter(function(x){return due.indexOf(x)<0}));
+ var fresh=rest.filter(function(x){return !rec(x.id)}),seen=rest.filter(function(x){return rec(x.id)});
+ return shuffle(due.concat(fresh.concat(seen).slice(0,n-due.length)))}
+function startTest(o){var qs=build(o);if(!qs.length){alert("No questions match these settings yet.");return}
+ var E=EXAM_CONFIG[o.exam],mins=o.mins||Math.max(1,Math.round(E.durationMinutes*qs.length/E.totalQuestions));
+ var neg=(o.neg===null||o.neg===undefined||isNaN(o.neg))?E.negativeMarks:o.neg,perm={};qs.forEach(function(x){perm[x.id]=shuffle([0,1,2,3])});
+ P.active={exam:o.exam,name:o.name||"Practice",ids:qs.map(function(x){return x.id}),perm:perm,ans:{},st:{},cur:0,mins:mins,start:Date.now(),end:Date.now()+mins*6e4,seen:Date.now(),sc:{c:E.correctMarks,n:neg}};save();exam()}
+/* Option shuffle safety: perm[id][k] = ORIGINAL index shown at screen position k. Answers store the ORIGINAL index,
+   and are compared with correctAnswer (also an original index), so shuffling can never change the answer key. */
+/* ================= exam view ================= */
+function palClass(A,id){var s=A.st[id]||{},a=A.ans[id]!=null;return a&&s.r?"ar":a?"a":s.r?"r":s.v?"na":""}
+function exam(){var A=P.active;if(!A)return home();var id=A.ids[A.cur],x=byId[id],sel=A.ans[id];(A.st[id]=A.st[id]||{}).v=1;save();
+ view('<div class="bar"><b>'+esc(EXAM_CONFIG[A.exam].name)+' · '+esc(x.section)+'</b><span>Q '+(A.cur+1)+' / '+A.ids.length+'</span><span id="tm" class="tm">--:--:--</span></div>'+
+ '<div class="ex"><main class="card"><p class="meta">'+esc(x.subject)+' · '+esc(x.topic)+'</p><h3>'+esc(x.question)+'</h3>'+
+ A.perm[id].map(function(o,k){return '<div class="opt'+(sel===o?' on':'')+'" role="radio" aria-checked="'+(sel===o)+'" data-a="pick" data-v="'+o+'"><b>'+"ABCD"[k]+'.</b><span>'+esc(x.options[o])+'</span></div>'}).join("")+
+ '<div><button class="btn" data-a="nav" data-v="-1">Previous</button><button class="btn pri" data-a="nav" data-v="1">Save &amp; Next</button><button class="btn" data-a="mark">Mark for Review</button><button class="btn" data-a="clr">Clear Response</button><button class="btn" data-a="bmk">'+(P.bm.indexOf(id)>=0?'★ Bookmarked':'☆ Bookmark')+'</button></div></main>'+
+ '<aside class="card"><details'+(window.innerWidth>800?' open':'')+'><summary>Question palette</summary><div class="pal">'+A.ids.map(function(z,i){return '<button class="p '+palClass(A,z)+(i===A.cur?' cur':'')+'" data-a="jump" data-v="'+i+'">'+(i+1)+'</button>'}).join("")+'</div>'+
+ '<p class="legend">Grey: not visited · Red: not answered · Green: answered · Purple: marked for review · Green with purple ring: answered &amp; marked</p></details>'+
+ '<bu
