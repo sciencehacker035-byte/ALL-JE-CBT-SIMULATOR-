@@ -1,0 +1,877 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="theme-color" content="#0a6c74">
+<title>Civil JE CBT Exam Simulator</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<header class="top">
+  <h1>CIVIL JE CBT EXAM SIMULATOR</h1>
+  <nav>
+    <button class="topbtn" data-a="home">Home</button>
+    <button class="topbtn" data-a="theme">☾ Theme</button>
+  </nav>
+</header>
+
+<div id="app">
+  <section class="card">
+    <h2>Loading CBT Simulator…</h2>
+    <p class="meta">Initializing the exam engine.</p>
+  </section>
+</div>
+
+<noscript>
+  <section class="card err">
+    <h2>JavaScript is disabled</h2>
+    <p>Enable JavaScript in your browser to use the CBT simulator.</p>
+  </section>
+</noscript>
+
+<script>
+(() => {
+"use strict";
+
+/* =========================================================
+   CONFIGURATION
+   ========================================================= */
+const EXAMS = {
+  RRB_JE: {name:"RRB JE", correct:1, negative:1/3, duration:120, total:100},
+  SSC_JE: {name:"SSC JE", correct:1, negative:1/3, duration:120, total:100},
+  HPCL_JE:{name:"HPCL JE",correct:1, negative:1/4, duration:120, total:100}
+};
+// These are configurable placeholders. Verify current official notifications.
+const MASTERY_THRESHOLD = 3;
+const WEAK_BELOW = 50;
+const STRONG_ABOVE = 75;
+const DUE_SHARE = 0.40;
+const STORE = "cbtSimulator_v2_progress";
+
+const SUBJECTS = {
+  Technical:[
+    "Engineering Mechanics","Strength of Materials","Theory of Structures",
+    "Structural Analysis","RCC","Steel Structures","Concrete Technology",
+    "Building Materials","Building Construction","Construction Management",
+    "Estimation & Costing","Surveying","Geotechnical Engineering",
+    "Soil Mechanics","Foundation Engineering","Fluid Mechanics","Hydraulics",
+    "Hydrology","Irrigation Engineering","Environmental Engineering",
+    "Public Health Engineering","Transportation Engineering","Highway Engineering",
+    "Railway Engineering","Bridge Engineering","Engineering Drawing",
+    "CAD Fundamentals","Engineering Mathematics"
+  ],
+  "Non-Technical":[
+    "General Awareness","Current Affairs","General Intelligence & Reasoning",
+    "Reasoning","General Science","Mathematics","English","Computer Awareness",
+    "Quantitative Aptitude"
+  ]
+};
+
+const ALL_EXAMS = Object.keys(EXAMS);
+const T = "Technical", N = "Non-Technical";
+
+function q(id,section,subject,topic,difficulty,question,options,answer,explanation,formula=""){
+  return {
+    id, exam:ALL_EXAMS, section, subject, topic, difficulty,
+    question, options, correctAnswer:answer, explanation,
+    concept:topic, formula, sourceType:"PYQ-style / Practice Question",
+    year:null, tags:[subject,topic]
+  };
+}
+
+/* =========================================================
+   STARTER QUESTION BANK
+   ========================================================= */
+const QUESTIONS = [
+q("CE-SOM-0001",T,"Strength of Materials","Bending Stress","Easy",
+"Section modulus of a rectangular section (b × d) about its centroidal axis is",
+["bd²/6","bd³/12","bd²/12","bd³/6"],0,
+"Z = I/ymax = (bd³/12)/(d/2) = bd²/6.","Z = bd²/6"),
+
+q("CE-SOM-0002",T,"Strength of Materials","Shear Stress","Medium",
+"For a rectangular beam section, the maximum shear stress is ___ times the average shear stress",
+["1.0","1.5","2.0","1.33"],1,
+"τmax = 1.5 times the average shear stress and occurs at the neutral axis.",
+"τmax = 1.5 V/(bd)"),
+
+q("CE-SOM-0003",T,"Strength of Materials","Columns","Medium",
+"Euler's crippling load for a column hinged at both ends is",
+["π²EI/L²","2π²EI/L²","π²EI/4L²","4π²EI/L²"],0,
+"For hinged-hinged end conditions, effective length equals L, hence Pcr = π²EI/L².",
+"Pcr = π²EI/Le²"),
+
+q("CE-SOM-0004",T,"Strength of Materials","Elastic Constants","Easy",
+"Poisson's ratio of structural steel is approximately",
+["0.1","0.3","0.5","0.7"],1,
+"A commonly used approximate value for structural steel is 0.30."),
+
+q("CE-EM-0001",T,"Engineering Mechanics","Resultant of Forces","Medium",
+"Two equal forces P act at an angle θ between them. Their resultant is",
+["2P cos(θ/2)","2P sin(θ/2)","P cos θ","P sin θ"],0,
+"Using the parallelogram law, R² = 2P²(1 + cos θ) = 4P²cos²(θ/2).",
+"R = 2P cos(θ/2)"),
+
+q("CE-FM-0001",T,"Fluid Mechanics","Fluid Properties","Easy",
+"SI unit of dynamic viscosity is",
+["N/m²","m²/s","Pa·s","N·s/m³"],2,
+"Dynamic viscosity has SI unit N·s/m², which is equivalent to Pa·s.",
+"τ = μ du/dy"),
+
+q("CE-FM-0002",T,"Fluid Mechanics","Fluid Kinematics","Medium",
+"The continuity equation is based on conservation of",
+["Energy","Momentum","Mass","Angular momentum"],2,
+"The continuity equation follows from conservation of mass. For steady incompressible flow, A₁V₁ = A₂V₂.",
+"A₁V₁ = A₂V₂"),
+
+q("CE-HY-0001",T,"Hydraulics","Open Channel Flow","Medium",
+"In an open channel, flow is critical when the Froude number equals",
+["0","0.5","1","2"],2,
+"Critical flow occurs when the Froude number is unity.",
+"Fr = V/√(gD)"),
+
+q("CE-SUR-0001",T,"Surveying","Traversing","Medium",
+"Sum of interior angles of a closed traverse with n sides is",
+["(2n−2)×90°","(2n−4)×90°","(2n+2)×90°","(n−2)×90°"],1,
+"For an n-sided polygon, the sum is (n−2)×180°, equivalent to (2n−4)×90°.",
+"Σθ = (n−2)×180°"),
+
+q("CE-SUR-0002",T,"Surveying","Bearings","Easy",
+"If the fore bearing of a line is 225°, its back bearing is",
+["45°","135°","315°","225°"],0,
+"When FB is greater than 180°, BB = FB − 180° = 45°."),
+
+q("CE-GT-0001",T,"Geotechnical Engineering","Shear Strength","Medium",
+"The shear strength of a dry cohesionless soil is given by",
+["c + σ tan φ","σ tan φ","c","σ cos φ"],1,
+"For a cohesionless soil c = 0, so τ = σ tan φ.",
+"τ = c + σ tan φ"),
+
+q("CE-SM-0001",T,"Soil Mechanics","Soil Properties","Easy",
+"Void ratio of soil is the ratio of",
+["Volume of voids to total volume","Volume of voids to volume of solids",
+"Volume of water to volume of voids","Volume of solids to total volume"],1,
+"Void ratio is e = Vv/Vs. Porosity is Vv/V."),
+
+q("CE-CT-0001",T,"Concrete Technology","Testing","Easy",
+"The standard cube used for concrete compressive strength testing is",
+["100 mm","150 mm","200 mm","300 mm"],1,
+"The standard concrete compressive-strength specimen is a 150 mm cube."),
+
+q("CE-RCC-0001",T,"RCC","Design Basics","Medium",
+"As per IS 456:2000, the minimum grade of concrete for reinforced concrete under mild exposure is",
+["M10","M15","M20","M25"],2,
+"M20 is the minimum grade specified for reinforced concrete under mild exposure."),
+
+q("CE-BM-0001",T,"Building Materials","Lime","Easy",
+"Lime that can set and harden under water is called",
+["Fat lime","Hydraulic lime","Quick lime","Slaked lime"],1,
+"Hydraulic lime can set and harden under water because of its hydraulic constituents."),
+
+q("CE-CM-0001",T,"Construction Management","CPM","Medium",
+"In CPM, the critical path is the",
+["Shortest path through the network","Longest path through the network",
+"Path with maximum float","Path with the most activities"],1,
+"The critical path is the longest-duration path through the network and has zero total float."),
+
+q("CE-ENV-0001",T,"Environmental Engineering","Wastewater","Easy",
+"The standard BOD test is conducted for",
+["3 days at 27°C","5 days at 20°C","7 days at 20°C","5 days at 27°C"],1,
+"Standard BOD5 is measured after 5 days at 20°C."),
+
+q("CE-TRN-0001",T,"Transportation Engineering","Highway Geometrics","Hard",
+"With e = superelevation, f = side friction, V in km/h and R in m, the horizontal curve equation is",
+["e + f = V²/(127R)","e − f = V²/(127R)",
+"e + f = V²/(225R)","e + f = V/(127R)"],0,
+"For highway curves, the standard relation is e + f = V²/(127R).",
+"e + f = V²/(127R)"),
+
+q("GR-0001",N,"Reasoning","Series","Medium",
+"Find the next number: 2, 6, 12, 20, 30, ?",
+["40","42","44","36"],1,
+"The differences are 4, 6, 8, 10, so the next difference is 12 and the answer is 42."),
+
+q("GR-0002",N,"Reasoning","Coding","Medium",
+"If CAT = 24 and DOG = 26 (sum of letter positions), then BAT = ?",
+["22","23","24","25"],1,
+"B + A + T = 2 + 1 + 20 = 23."),
+
+q("MT-0001",N,"Mathematics","Percentage","Easy",
+"15% of 240 is",["32","34","36","38"],2,
+"15/100 × 240 = 36."),
+
+q("MT-0002",N,"Mathematics","Simple Interest","Easy",
+"Simple interest on ₹1000 at 10% per annum for 2 years is",
+["₹100","₹200","₹210","₹220"],1,
+"SI = PRT/100 = 1000 × 10 × 2 / 100 = ₹200.","SI = PRT/100"),
+
+q("GS-0001",N,"General Science","Physics","Easy",
+"SI unit of force is",["Joule","Newton","Pascal","Watt"],1,
+"Force is measured in newtons (kg·m/s²)."),
+
+q("EN-0001",N,"English","Synonyms","Easy",
+"Choose the synonym of ABUNDANT",
+["Scarce","Plentiful","Tiny","Costly"],1,
+"Abundant means existing in large quantity; plentiful is the closest synonym."),
+
+q("CA-0001",N,"Computer Awareness","Basics","Easy",
+"RAM stands for",
+["Read Access Memory","Random Access Memory","Rapid Access Machine","Run Access Memory"],1,
+"RAM stands for Random Access Memory.")
+];
+
+/* =========================================================
+   STATE / HELPERS
+   ========================================================= */
+const app = document.getElementById("app");
+let timer = null;
+
+const defaultState = {
+  version:2, attempts:{}, history:[], bookmarks:[],
+  active:null, theme:"light", exam:"RRB_JE"
+};
+
+let P = loadState();
+
+function loadState(){
+  try{
+    const raw = localStorage.getItem(STORE);
+    if(!raw) return structuredClone(defaultState);
+    const parsed = JSON.parse(raw);
+    return {...structuredClone(defaultState), ...parsed};
+  }catch(e){
+    return structuredClone(defaultState);
+  }
+}
+function save(){ localStorage.setItem(STORE, JSON.stringify(P)); }
+function esc(s){
+  return String(s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+}
+function shuffle(a){
+  const x = a.slice();
+  for(let i=x.length-1;i>0;i--){
+    const j=Math.floor(Math.random()*(i+1));
+    [x[i],x[j]]=[x[j],x[i]];
+  }
+  return x;
+}
+function pct(a,b){return b?Math.round(a/b*100):0;}
+function stat(label,value){
+  return `<div class="stat"><small>${esc(label)}</small><b>${esc(value)}</b></div>`;
+}
+function getQ(id){return QUESTIONS.find(x=>x.id===id);}
+function att(id){return P.attempts[id];}
+function due(id){
+  const r=att(id);
+  return !!r && r.wrong>0 && r.streak<MASTERY_THRESHOLD;
+}
+function mastered(id){
+  const r=att(id);
+  return !!r && r.wrong>0 && r.streak>=MASTERY_THRESHOLD;
+}
+function priority(r){
+  if(!r || !r.wrong) return 0;
+  if(r.streak>=MASTERY_THRESHOLD) return 1;
+  const days=Math.min(14,(Date.now()-r.last)/86400000);
+  return Math.min(100,r.wrong*20+(100-r.mastery)*.4+days*2+(r.lastResult==="W"?20:0));
+}
+function record(id,correct){
+  const r=P.attempts[id] || {
+    attempts:0,correct:0,wrong:0,streak:0,mastery:0,last:0,lastResult:""
+  };
+  r.attempts++;
+  if(correct){r.correct++;r.streak++;}
+  else {r.wrong++;r.streak=0;}
+  r.mastery=Math.min(100,Math.round(r.correct/r.attempts*100));
+  r.last=Date.now();
+  r.lastResult=correct?"C":"W";
+  P.attempts[id]=r;
+}
+function topicStats(){
+  const out={};
+  Object.entries(P.attempts).forEach(([id,r])=>{
+    const x=getQ(id); if(!x) return;
+    const k=x.subject+"||"+x.topic;
+    out[k] ||= {subject:x.subject,topic:x.topic,a:0,c:0};
+    out[k].a += r.attempts;
+    out[k].c += r.correct;
+  });
+  return Object.values(out);
+}
+function weakTopics(){
+  return topicStats().filter(x=>x.a>=2 && pct(x.c,x.a)<WEAK_BELOW);
+}
+function overall(){
+  let solved=0,correct=0;
+  Object.values(P.attempts).forEach(r=>{solved+=r.attempts;correct+=r.correct;});
+  const scores=P.history.map(h=>h.percent||0);
+  return {
+    solved,accuracy:pct(correct,solved),tests:P.history.length,
+    best:scores.length?Math.max(...scores):0,
+    wrong:Object.values(P.attempts).filter(r=>r.wrong>0).length,
+    due:Object.keys(P.attempts).filter(due).length,
+    mastered:Object.keys(P.attempts).filter(mastered).length
+  };
+}
+function clearTimer(){
+  if(timer){clearInterval(timer);timer=null;}
+}
+function render(html){
+  clearTimer();
+  app.innerHTML=html;
+  window.scrollTo(0,0);
+}
+function errorScreen(e){
+  render(`<section class="card err">
+    <h2>Application error</h2>
+    <p>The simulator could not complete this action.</p>
+    <pre>${esc(e?.stack || e)}</pre>
+    <button class="btn pri" data-a="home">Return Home</button>
+  </section>`);
+}
+
+/* =========================================================
+   DASHBOARD
+   ========================================================= */
+function home(){
+  const s=overall();
+  const weak=weakTopics();
+  const dueIds=Object.keys(P.attempts).filter(due);
+
+  render(`
+  <section class="hero card">
+    <div>
+      <span class="badge">CIVIL ENGINEERING</span>
+      <h2>CBT Exam Preparation</h2>
+      <p class="meta">RRB JE · SSC JE · HPCL JE — Technical + Non-Technical</p>
+    </div>
+    <button class="btn pri big" data-a="setup">Start Test</button>
+  </section>
+
+  <section class="grid stats">
+    ${stat("Questions Solved",s.solved)}
+    ${stat("Tests Completed",s.tests)}
+    ${stat("Accuracy",s.accuracy+"%")}
+    ${stat("Best Score",s.best+"%")}
+    ${stat("Due Revision",s.due)}
+    ${stat("Mastered",s.mastered)}
+  </section>
+
+  <section class="card">
+    <h3>Practice</h3>
+    <div class="tiles">
+      <button class="tile" data-a="setup">📝 Full / Custom Test</button>
+      <button class="tile" data-a="quick">⚡ Quick Practice</button>
+      <button class="tile" data-a="wrong">❌ My Mistakes (${s.wrong})</button>
+      <button class="tile" data-a="weak">🎯 Weak Topics (${weak.length})</button>
+      <button class="tile" data-a="bookmarks">🔖 Bookmarks (${P.bookmarks.length})</button>
+      <button class="tile" data-a="performance">📊 Performance</button>
+    </div>
+  </section>
+
+  <section class="card">
+    <h3>Revision Queue</h3>
+    ${dueIds.length
+      ? `<p>${dueIds.length} question(s) need revision.</p><button class="btn pri" data-a="due">Practice Due Questions</button>`
+      : `<p class="meta">No revision questions are currently due. Wrong questions will automatically enter the revision queue.</p>`}
+  </section>
+
+  <section class="card">
+    <h3>Exam Coverage</h3>
+    <div class="tiles">
+      ${Object.entries(EXAMS).map(([k,e])=>
+        `<button class="tile" data-a="preset" data-exam="${k}">${esc(e.name)}<small>${e.duration} min · ${e.total} questions</small></button>`
+      ).join("")}
+    </div>
+    <p class="note">Starter bank: ${QUESTIONS.length} practice questions. Exam settings are configurable; verify the latest official notification before using exact exam-mode settings.</p>
+  </section>
+
+  <section class="card">
+    <h3>Progress Backup</h3>
+    <button class="btn" data-a="export">Export Progress</button>
+    <button class="btn" data-a="import">Import Progress</button>
+    <button class="btn danger" data-a="reset">Reset All Progress</button>
+    <input id="importFile" type="file" accept=".json" hidden>
+  </section>`);
+}
+
+/* =========================================================
+   TEST SETUP
+   ========================================================= */
+function setup(defaultExam=P.exam){
+  P.exam=defaultExam; save();
+  render(`
+  <section class="card">
+    <h2>Configure Test</h2>
+    <div class="form">
+      <label>Exam
+        <select id="exam">
+          ${Object.entries(EXAMS).map(([k,e])=>`<option value="${k}" ${k===defaultExam?"selected":""}>${esc(e.name)}</option>`).join("")}
+        </select>
+      </label>
+      <label>Section
+        <select id="section">
+          <option value="">Technical + Non-Technical</option>
+          <option value="Technical">Technical</option>
+          <option value="Non-Technical">Non-Technical</option>
+        </select>
+      </label>
+      <label>Subject
+        <select id="subject"><option value="">All Subjects</option></select>
+      </label>
+      <label>Difficulty
+        <select id="difficulty">
+          <option>Mixed</option><option>Easy</option><option>Medium</option><option>Hard</option>
+        </select>
+      </label>
+      <label>Questions
+        <select id="count"><option>10</option><option>20</option><option>25</option><option>50</option><option>100</option></select>
+      </label>
+      <label>Duration
+        <select id="duration"><option value="auto">Exam proportion</option><option>10</option><option>20</option><option>30</option><option>60</option><option>120</option></select>
+      </label>
+    </div>
+    <div class="actions">
+      <button class="btn pri" data-a="startCustom">Start CBT</button>
+      <button class="btn" data-a="home">Cancel</button>
+    </div>
+  </section>`);
+  updateSubjects();
+  document.getElementById("section").addEventListener("change",updateSubjects);
+}
+function updateSubjects(){
+  const section=document.getElementById("section");
+  const subject=document.getElementById("subject");
+  if(!section||!subject)return;
+  const list=section.value ? SUBJECTS[section.value] : [...new Set(Object.values(SUBJECTS).flat())];
+  subject.innerHTML='<option value="">All Subjects</option>'+list.map(s=>`<option>${esc(s)}</option>`).join("");
+}
+function startCustom(){
+  const exam=document.getElementById("exam").value;
+  const section=document.getElementById("section").value;
+  const subject=document.getElementById("subject").value;
+  const difficulty=document.getElementById("difficulty").value;
+  const count=Number(document.getElementById("count").value);
+  const durationValue=document.getElementById("duration").value;
+  const cfg=EXAMS[exam];
+  const duration=durationValue==="auto"
+    ? Math.max(1,Math.round(cfg.duration*count/cfg.total))
+    : Number(durationValue);
+
+  startTest({exam,section,subject,difficulty,count,duration,mode:"normal"});
+}
+
+/* =========================================================
+   TEST BUILDER / REVISION
+   ========================================================= */
+function buildQuestions(o){
+  if(Array.isArray(o.ids)&&o.ids.length){
+    return o.ids.map(id=>getQ(id)).filter(Boolean).slice(0,o.count||o.ids.length);
+  }
+  let pool=QUESTIONS.filter(x=>x.exam.includes(o.exam));
+  if(o.section)pool=pool.filter(x=>x.section===o.section);
+  if(o.subject)pool=pool.filter(x=>x.subject===o.subject);
+  if(o.difficulty && o.difficulty!=="Mixed")pool=pool.filter(x=>x.difficulty===o.difficulty);
+  if(o.mode==="wrong")pool=pool.filter(x=>att(x.id)?.wrong>0);
+  if(o.mode==="due")pool=pool.filter(x=>due(x.id));
+  if(o.mode==="weak"){
+    const wt=new Set(weakTopics().map(x=>x.topic));
+    pool=pool.filter(x=>wt.has(x.topic));
+  }
+  if(o.mode==="bookmarks")pool=pool.filter(x=>P.bookmarks.includes(x.id));
+
+  const count=Math.min(o.count||10,pool.length);
+  if(!count)return [];
+
+  const ranked=pool.map(x=>{
+    const r=att(x.id);
+    const w=r?priority(r):1;
+    return {x,score:w+Math.random()};
+  }).sort((a,b)=>b.score-a.score).map(z=>z.x);
+
+  if(["wrong","due","weak","bookmarks"].includes(o.mode)) return shuffle(ranked.slice(0,count));
+
+  const dueQs=ranked.filter(x=>due(x.id)).slice(0,Math.ceil(count*DUE_SHARE));
+  const rest=shuffle(ranked.filter(x=>!dueQs.includes(x)));
+  return shuffle([...dueQs,...rest.slice(0,count-dueQs.length)]);
+}
+
+function startTest(o){
+  const qs=buildQuestions(o);
+  if(!qs.length){alert("No questions match these settings yet.");return;}
+
+  const cfg=EXAMS[o.exam];
+  const duration=o.duration||Math.max(1,Math.round(cfg.duration*qs.length/cfg.total));
+  const perm={};
+  qs.forEach(x=>perm[x.id]=shuffle([0,1,2,3]));
+
+  P.active={
+    exam:o.exam,
+    name:o.name || (o.mode==="wrong"?"My Mistakes":o.mode==="due"?"Revision Test":"CBT Practice"),
+    ids:qs.map(x=>x.id),
+    perm, answers:{}, state:{}, current:0,
+    end:Date.now()+duration*60000,
+    duration, score:{correct:cfg.correct,negative:cfg.negative}
+  };
+  P.exam=o.exam;
+  save();
+  examView();
+}
+
+/* =========================================================
+   EXAM ENGINE
+   ========================================================= */
+function paletteClass(id,i){
+  const A=P.active, st=A.state[id]||{}, answered=A.answers[id]!==undefined;
+  return [
+    i===A.current?"cur":"",
+    answered && st.review?"ar":"",
+    answered?"a":"",
+    !answered && st.review?"r":"",
+    !answered && st.visited?"na":""
+  ].filter(Boolean).join(" ");
+}
+function examView(){
+  const A=P.active;
+  if(!A)return home();
+  const id=A.ids[A.current], x=getQ(id);
+  if(!x){P.active=null;save();return home();}
+  const st=A.state[id] ||= {};
+  st.visited=true;
+  save();
+
+  render(`
+  <div class="exambar">
+    <b>${esc(EXAMS[A.exam].name)}</b>
+    <span>${esc(A.name)}</span>
+    <span>Q ${A.current+1}/${A.ids.length}</span>
+    <span id="timer" class="tm">--:--</span>
+  </div>
+
+  <div class="ex">
+    <main class="card">
+      <div class="meta">${esc(x.section)} · ${esc(x.subject)} · ${esc(x.topic)} · ${esc(x.difficulty)}</div>
+      <h2 class="question">${esc(x.question)}</h2>
+
+      <div class="options">
+        ${A.perm[id].map((originalIndex,screenIndex)=>`
+          <button class="opt ${A.answers[id]===originalIndex?"on":""}" data-a="pick" data-v="${originalIndex}">
+            <b>${"ABCD"[screenIndex]}.</b><span>${esc(x.options[originalIndex])}</span>
+          </button>`).join("")}
+      </div>
+
+      <div class="actions">
+        <button class="btn" data-a="prev">Previous</button>
+        <button class="btn pri" data-a="next">${A.current===A.ids.length-1?"Review & Submit":"Save & Next"}</button>
+        <button class="btn" data-a="mark">${st.review?"Unmark Review":"Mark for Review"}</button>
+        <button class="btn" data-a="clear">Clear Response</button>
+        <button class="btn" data-a="bookmark">${P.bookmarks.includes(id)?"★ Bookmarked":"☆ Bookmark"}</button>
+      </div>
+    </main>
+
+    <aside class="card palette">
+      <details open>
+        <summary>Question Palette</summary>
+        <div class="pal">
+          ${A.ids.map((z,i)=>`<button class="p ${paletteClass(z,i)}" data-a="jump" data-v="${i}">${i+1}</button>`).join("")}
+        </div>
+        <div class="legend">
+          <span>Grey: not visited</span> ·
+          <span>Red: not answered</span> ·
+          <span>Green: answered</span> ·
+          <span>Purple: review</span>
+        </div>
+      </details>
+      <button class="btn danger full" data-a="submit">Submit Test</button>
+    </aside>
+  </div>`);
+
+  startTimer();
+}
+function startTimer(){
+  clearTimer();
+  const tick=()=>{
+    if(!P.active)return;
+    const left=Math.max(0,P.active.end-Date.now());
+    const total=Math.floor(left/1000);
+    const h=Math.floor(total/3600);
+    const m=Math.floor((total%3600)/60);
+    const s=total%60;
+    const el=document.getElementById("timer");
+    if(el){
+      el.textContent=(h?String(h).padStart(2,"0")+":":"")+String(m).padStart(2,"0")+":"+String(s).padStart(2,"0");
+      el.classList.toggle("warn",left<=10*60000&&left>5*60000);
+      el.classList.toggle("crit",left<=5*60000);
+    }
+    if(left<=0){
+      clearTimer();
+      submitTest(true);
+    }
+  };
+  tick();
+  timer=setInterval(tick,500);
+}
+
+/* =========================================================
+   RESULT / REVIEW
+   ========================================================= */
+function submitTest(auto=false){
+  if(!P.active)return;
+  if(!auto && !confirm("Submit this test? You will not be able to change your answers."))return;
+
+  clearTimer();
+  const A=P.active, cfg=A.score;
+  let correct=0,wrong=0,unattempted=0;
+
+  const details=A.ids.map(id=>{
+    const x=getQ(id), selected=A.answers[id];
+    let result="U";
+    if(selected===undefined)unattempted++;
+    else if(selected===x.correctAnswer){correct++;result="C";}
+    else {wrong++;result="W";}
+    if(selected!==undefined)record(id,result==="C");
+    return {id,result,selected};
+  });
+
+  const score=correct*cfg.correct-wrong*cfg.negative;
+  const max=A.ids.length*cfg.correct;
+  const result={
+    id:Date.now(),
+    exam:A.exam,name:A.name,date:new Date().toISOString(),
+    total:A.ids.length,correct,wrong,unattempted,
+    score,max,percent:Math.round(Math.max(0,score)/max*100),
+    details
+  };
+  P.history.push(result);
+  P.active=null;
+  save();
+  resultView(result);
+}
+function resultView(r){
+  render(`
+  <section class="card hero">
+    <span class="badge">TEST COMPLETED</span>
+    <h2>${esc(EXAMS[r.exam].name)} · ${esc(r.name)}</h2>
+    <div class="grid stats">
+      ${stat("Final Score",r.score.toFixed(2))}
+      ${stat("Accuracy",pct(r.correct,r.correct+r.wrong)+"%")}
+      ${stat("Correct",r.correct)}
+      ${stat("Wrong",r.wrong)}
+      ${stat("Unattempted",r.unattempted)}
+      ${stat("Percentage",r.percent+"%")}
+    </div>
+  </section>
+  <section class="card">
+    <h3>Question Review</h3>
+    ${r.details.map((d,i)=>{
+      const x=getQ(d.id);
+      return `<details class="review ${d.result}">
+        <summary>Q${i+1} · ${esc(x.subject)} · ${d.result==="C"?"Correct":d.result==="W"?"Wrong":"Unattempted"}</summary>
+        <div class="rv">
+          <p><b>${esc(x.question)}</b></p>
+          <p>Your answer: <b>${d.selected===undefined?"Not answered":esc(x.options[d.selected])}</b></p>
+          <p>Correct answer: <b>${esc(x.options[x.correctAnswer])}</b></p>
+          <p>${esc(x.explanation)}</p>
+          ${x.formula?`<p><b>Formula:</b> ${esc(x.formula)}</p>`:""}
+          <button class="btn" data-a="practiceOne" data-id="${x.id}">Practice Again</button>
+        </div>
+      </details>`;
+    }).join("")}
+  </section>
+  <div class="actions">
+    <button class="btn pri" data-a="home">Dashboard</button>
+    <button class="btn" data-a="wrong">Practice Mistakes</button>
+    <button class="btn" data-a="performance">Performance</button>
+  </div>`);
+}
+
+/* =========================================================
+   PERFORMANCE / MISTAKES / BOOKMARKS
+   ========================================================= */
+function performance(){
+  const s=overall(), topics=topicStats().sort((a,b)=>pct(a.c,a.a)-pct(b.c,b.a));
+  render(`
+  <section class="card"><h2>Performance Analytics</h2>
+    <div class="grid stats">
+      ${stat("Questions Solved",s.solved)}
+      ${stat("Accuracy",s.accuracy+"%")}
+      ${stat("Tests",s.tests)}
+      ${stat("Best",s.best+"%")}
+    </div>
+  </section>
+  <section class="card"><h3>Topic Performance</h3>
+    ${topics.length?topics.map(t=>{
+      const v=pct(t.c,t.a);
+      return `<div class="row"><span>${esc(t.subject)}<small>${esc(t.topic)}</small></span>
+        <div class="bar2"><i style="width:${v}%"></i></div><b>${v}%</b></div>`;
+    }).join(""):"<p class='meta'>Complete some questions to build analytics.</p>"}
+  </section>
+  <section class="card"><h3>Test History</h3>
+    ${P.history.length?P.history.slice().reverse().map((h,i)=>
+      `<div class="history"><b>#${P.history.length-i} ${esc(h.name)}</b><span>${h.percent}% · ${h.correct}/${h.total} correct · ${new Date(h.date).toLocaleDateString()}</span></div>`
+    ).join(""):"<p class='meta'>No tests completed yet.</p>"}
+  </section>
+  <button class="btn" data-a="home">Back</button>`);
+}
+function mistakes(mode="wrong"){
+  const ids=Object.keys(P.attempts).filter(id=>{
+    if(!getQ(id))return false;
+    if(mode==="due")return due(id);
+    if(mode==="mastered")return mastered(id);
+    return P.attempts[id].wrong>0;
+  });
+  render(`
+  <section class="card">
+    <h2>${mode==="due"?"Revision Queue":mode==="mastered"?"Mastered Questions":"My Mistakes"}</h2>
+    <p class="meta">${ids.length} question(s)</p>
+    <button class="btn pri" data-a="${mode==="due"?"due":"wrong"}>${mode==="due"?"Start Revision":"Practice Mistakes"}</button>
+    <button class="btn" data-a="home">Back</button>
+  </section>
+  <section class="card">
+    ${ids.length?ids.map(id=>{
+      const x=getQ(id),r=P.attempts[id];
+      return `<div class="history">
+        <div><b>${esc(x.subject)} · ${esc(x.topic)}</b><small>${esc(x.question)}</small></div>
+        <span>Attempts ${r.attempts} · Wrong ${r.wrong} · Mastery ${r.mastery}% · Streak ${r.streak}</span>
+      </div>`;
+    }).join(""):"<p>No questions in this category.</p>"}
+  </section>`);
+}
+function bookmarks(){
+  const ids=P.bookmarks.filter(id=>getQ(id));
+  render(`<section class="card"><h2>Bookmarks</h2><p class="meta">${ids.length} saved question(s)</p>
+    <button class="btn pri" data-a="startBookmarks">Practice Bookmarks</button>
+    <button class="btn" data-a="home">Back</button></section>
+    <section class="card">${ids.length?ids.map(id=>{
+      const x=getQ(id);
+      return `<div class="history"><b>${esc(x.subject)} · ${esc(x.topic)}</b><small>${esc(x.question)}</small></div>`;
+    }).join(""):"<p>No bookmarks yet.</p>"}</section>`);
+}
+
+/* =========================================================
+   EVENT ROUTER
+   ========================================================= */
+document.addEventListener("click",e=>{
+  const el=e.target.closest("[data-a]");
+  if(!el)return;
+  const a=el.dataset.a;
+  try{
+    if(a==="home")home();
+    else if(a==="resume")examView();
+    else if(a==="discardActive"){
+      if(confirm("Discard the unfinished test? Completed history will remain unchanged.")){
+        P.active=null; save(); home();
+      }
+    }
+    else if(a==="theme"){
+      P.theme=P.theme==="dark"?"light":"dark";
+      document.documentElement.dataset.theme=P.theme;
+      save();
+    }
+    else if(a==="setup")setup(P.exam);
+    else if(a==="preset")setup(el.dataset.exam);
+    else if(a==="quick")startTest({exam:P.exam,count:10,difficulty:"Mixed",duration:15,mode:"normal",name:"Quick Practice"});
+    else if(a==="wrong")startTest({exam:P.exam,count:10,difficulty:"Mixed",duration:15,mode:"wrong",name:"My Mistakes"});
+    else if(a==="due")startTest({exam:P.exam,count:10,difficulty:"Mixed",duration:15,mode:"due",name:"Revision Test"});
+    else if(a==="weak")startTest({exam:P.exam,count:10,difficulty:"Mixed",duration:15,mode:"weak",name:"Weak Topics"});
+    else if(a==="bookmarks")bookmarks();
+    else if(a==="startBookmarks")startTest({exam:P.exam,count:20,difficulty:"Mixed",duration:20,mode:"bookmarks",name:"Bookmarks"});
+    else if(a==="performance")performance();
+    else if(a==="startCustom")startCustom();
+    else if(a==="pick"){
+      const A=P.active,id=A.ids[A.current];
+      A.answers[id]=Number(el.dataset.v); save(); examView();
+    }
+    else if(a==="next"){
+      if(P.active.current===P.active.ids.length-1)submitTest(false);
+      else {P.active.current++;save();examView();}
+    }
+    else if(a==="prev"){
+      if(P.active.current>0){P.active.current--;save();examView();}
+    }
+    else if(a==="jump"){
+      P.active.current=Number(el.dataset.v);save();examView();
+    }
+    else if(a==="mark"){
+      const id=P.active.ids[P.active.current];
+      P.active.state[id] ||= {};
+      P.active.state[id].review=!P.active.state[id].review;
+      save();examView();
+    }
+    else if(a==="clear"){
+      const id=P.active.ids[P.active.current];
+      delete P.active.answers[id];save();examView();
+    }
+    else if(a==="bookmark"){
+      const id=P.active.ids[P.active.current];
+      const i=P.bookmarks.indexOf(id);
+      if(i<0)P.bookmarks.push(id);else P.bookmarks.splice(i,1);
+      save();examView();
+    }
+    else if(a==="submit")submitTest(false);
+    else if(a==="practiceOne")startTest({exam:P.exam,ids:[el.dataset.id],count:1,duration:5,name:"Practice Again"});
+    else if(a==="export"){
+      const blob=new Blob([JSON.stringify(P,null,2)],{type:"application/json"});
+      const url=URL.createObjectURL(blob),link=document.createElement("a");
+      link.href=url;link.download="civil-je-cbt-progress.json";link.click();
+      setTimeout(()=>URL.revokeObjectURL(url),1000);
+    }
+    else if(a==="import")document.getElementById("importFile")?.click();
+    else if(a==="reset"){
+      if(confirm("Delete ALL saved progress, bookmarks and test history?")){
+        localStorage.removeItem(STORE);P=loadState();home();
+      }
+    }
+  }catch(err){errorScreen(err);}
+});
+
+document.addEventListener("change",e=>{
+  if(e.target.id==="importFile" && e.target.files[0]){
+    const reader=new FileReader();
+    reader.onload=()=>{
+      try{
+        const imported=JSON.parse(reader.result);
+        if(!imported || typeof imported!=="object" || !imported.attempts || !Array.isArray(imported.history))
+          throw new Error("Invalid CBT progress file.");
+        P={...structuredClone(defaultState),...imported,active:null};
+        save();home();
+        alert("Progress imported successfully.");
+      }catch(err){alert("Import failed: "+err.message);}
+    };
+    reader.readAsText(e.target.files[0]);
+  }
+});
+
+window.addEventListener("beforeunload",e=>{
+  if(P.active){e.preventDefault();e.returnValue="";}
+});
+
+document.documentElement.dataset.theme=P.theme;
+
+function boot(){
+  if(P.active&&P.active.ids&&P.active.ids.length){
+    const left=P.active.end-Date.now();
+    if(left>0){
+      render(`<section class="card hero">
+        <div>
+          <span class="badge">ACTIVE TEST FOUND</span>
+          <h2>Resume your unfinished test?</h2>
+          <p class="meta">${esc(P.active.name)} · ${esc(EXAMS[P.active.exam].name)} · ${P.active.current+1}/${P.active.ids.length} questions</p>
+        </div>
+        <div class="actions">
+          <button class="btn pri" data-a="resume">Resume Test</button>
+          <button class="btn danger" data-a="discardActive">Discard Test</button>
+        </div>
+      </section>`);
+      return;
+    }
+    P.active=null; save();
+  }
+  home();
+}
+boot();
+
+})();
+</script>
+</body>
+</html>
